@@ -37,6 +37,7 @@ def render_weather_clock_to_png(
     weekday_index: int,
     day: int,
     month: int,
+    custom_text: str | None = None,
     font_name: str = "7x5.ttf",
     font_size: float = 7.5,
     background_color: str = "000000",
@@ -55,8 +56,11 @@ def render_weather_clock_to_png(
 
     text_x = icon_width + icon_gap
     text_width = width - text_x
-    weekday_text = WEEKDAYS_TR[weekday_index]
-    date_text = f"{day} {MONTHS_TR[month - 1]}"
+    if custom_text:
+        weekday_text, date_text = _split_top_text(custom_text)
+    else:
+        weekday_text = WEEKDAYS_TR[weekday_index]
+        date_text = f"{day} {MONTHS_TR[month - 1]}"
     temp_text = _format_temperature_value(temperature)
 
     _draw_date_row(
@@ -219,6 +223,16 @@ def _draw_date_row(
         font,
         fill=date_color,
     )
+
+
+def _split_top_text(text: str) -> tuple[str, str]:
+    """Split custom top-row text into blue and white segments."""
+    parts = text.strip().split(maxsplit=1)
+    if not parts:
+        return "", ""
+    if len(parts) == 1:
+        return parts[0], ""
+    return parts[0], parts[1]
 
 
 def _draw_bottom_row(

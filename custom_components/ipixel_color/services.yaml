@@ -68,6 +68,12 @@ display_weather_clock:
       selector:
         entity:
           domain: weather
+    custom_text:
+      name: Custom Text
+      description: Optional top-row text. If omitted, the Custom Text entity is used; if that is empty, the current date is used.
+      required: false
+      selector:
+        text:
     font_name:
       name: Font
       description: Font file to use for date, time, and temperature.

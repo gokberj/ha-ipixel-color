@@ -26,10 +26,33 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Platforms supported by this integration
-PLATFORMS: list[Platform] = [Platform.SWITCH, Platform.TEXT, Platform.SENSOR, Platform.SELECT, Platform.NUMBER, Platform.BUTTON, Platform.LIGHT]
+PLATFORMS: list[Platform] = [
+    Platform.SWITCH,
+    Platform.TEXT,
+    Platform.SENSOR,
+    Platform.NUMBER,
+]
 
 # Type alias for iPIXEL config entries
 SERVICE_DISPLAY_WEATHER_CLOCK = "display_weather_clock"
+LEGACY_CONTROL_SUFFIXES = {
+    "antialiasing",
+    "auto_update",
+    "clock_24h",
+    "clock_show_date",
+    "font_select",
+    "mode_select",
+    "clock_style_select",
+    "font_size",
+    "line_spacing",
+    "text_animation",
+    "text_speed",
+    "text_rainbow",
+    "update_button",
+    "sync_time_button",
+    "text_color",
+    "background_color",
+}
 
 DISPLAY_WEATHER_CLOCK_SCHEMA = vol.Schema(
     {
@@ -37,6 +60,7 @@ DISPLAY_WEATHER_CLOCK_SCHEMA = vol.Schema(
         vol.Optional("device_id"): vol.Any(str, [str]),
         vol.Optional("area_id"): vol.Any(str, [str]),
         vol.Optional("weather_entity", default="weather.forecast_home"): str,
+        vol.Optional("custom_text"): str,
         vol.Optional("font_name", default="7x5.ttf"): str,
         vol.Optional("font_size", default=7.5): vol.Coerce(float),
     },
@@ -97,6 +121,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.runtime_data = api
     entry.async_on_unload(entry.add_update_listener(async_update_options))
     _register_services(hass)
+    _remove_legacy_control_entities(hass, address)
     
     # Set up platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -147,6 +172,9 @@ def _register_services(hass: HomeAssistant) -> None:
             return
 
         temperature = weather_state.attributes.get("temperature")
+        custom_text = call.data.get("custom_text")
+        if custom_text is None:
+            custom_text = _get_custom_text(hass, api.address)
         now = dt_util.now()
 
         if not api.is_connected:
@@ -160,6 +188,7 @@ def _register_services(hass: HomeAssistant) -> None:
             weekday_index=now.weekday(),
             day=now.day,
             month=now.month,
+            custom_text=custom_text,
             font_name=call.data["font_name"],
             font_size=call.data["font_size"],
         )
@@ -172,6 +201,30 @@ def _register_services(hass: HomeAssistant) -> None:
         async_display_weather_clock,
         schema=DISPLAY_WEATHER_CLOCK_SCHEMA,
     )
+
+
+def _remove_legacy_control_entities(hass: HomeAssistant, address: str) -> None:
+    """Remove old advanced controls from the entity registry."""
+    registry = er.async_get(hass)
+    for suffix in LEGACY_CONTROL_SUFFIXES:
+        unique_id = f"{address}_{suffix}"
+        for entity_id, entry in list(registry.entities.items()):
+            if entry.platform == DOMAIN and entry.unique_id == unique_id:
+                registry.async_remove(entity_id)
+                _LOGGER.debug("Removed legacy iPIXEL control entity: %s", entity_id)
+
+
+def _get_custom_text(hass: HomeAssistant, address: str) -> str | None:
+    """Read the custom weather-clock text entity."""
+    registry = er.async_get(hass)
+    unique_id = f"{address}_text_display"
+    for entity_id, entry in registry.entities.items():
+        if entry.platform == DOMAIN and entry.unique_id == unique_id:
+            state = hass.states.get(entity_id)
+            if state and state.state not in ("unknown", "unavailable", ""):
+                return state.state
+            return None
+    return None
 
 
 def _get_api_for_service_call(

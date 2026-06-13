@@ -486,6 +486,7 @@ class iPIXELAPI:
         weekday_index: int,
         day: int,
         month: int,
+        custom_text: str | None = None,
         font_name: str = "7x5.ttf",
         font_size: float = 7.5,
     ) -> bool:
@@ -518,6 +519,7 @@ class iPIXELAPI:
                 weekday_index=weekday_index,
                 day=day,
                 month=month,
+                custom_text=custom_text,
                 font_name=font_name,
                 font_size=font_size,
             )
