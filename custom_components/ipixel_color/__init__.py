@@ -44,6 +44,12 @@ DISPLAY_WEATHER_CLOCK_SCHEMA = vol.Schema(
 )
 
 
+async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
+    """Set up iPIXEL Color services."""
+    _register_services(hass)
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up iPIXEL Color from a config entry."""
     address = entry.data[CONF_ADDRESS]
